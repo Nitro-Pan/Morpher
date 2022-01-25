@@ -17,7 +17,9 @@ namespace Morpher {
         private Canvas c0;
         private Canvas c1;
         private BitmapSource c0Image;
+        private Image c0ImageVisual;
         private BitmapSource c1Image;
+        private Image c1ImageVisual;
 
         //might be better to do this by passing the Line through to everything
         //but it exposes it more than I would like so maybe not.
@@ -153,26 +155,30 @@ namespace Morpher {
                 throw new IndexOutOfRangeException("Canvas index must be either 1 or 0.");
             }
 
-            Image imageToAdd = new Image();
+            Image imageToAdd = new();
             imageToAdd.Source = image;
 
             if (canvasIndex == 0) {
-                //c0Image = FitToCanvas(image, canvasIndex);
+                c0.Children.Remove(c0ImageVisual);
                 c0Image = image;
+                c0ImageVisual = imageToAdd;
                 //imageToAdd.Width = c0.ActualWidth;
                 //imageToAdd.Height = c0.ActualHeight;
-                c0.Children.Add(imageToAdd);
+                c0.Children.Insert(0, imageToAdd);
             } else {
                 //c1Image = FitToCanvas(image, canvasIndex);
+                c1.Children.Remove(c1ImageVisual);
                 c1Image = image;
+                c1ImageVisual = imageToAdd;
                 //imageToAdd.Width = c1.Width;
                 //imageToAdd.Height = c1.Height;
-                c1.Children.Add(imageToAdd);
+                c1.Children.Insert(0, imageToAdd);
             }
         }
 
+        //hardcoded c0Image, probably don't do that for actual morphing okay
         public BitmapSource Morph() {
-            WriteableBitmap bmp = new WriteableBitmap(c0Image.PixelWidth, c0Image.PixelHeight, c0Image.DpiX, c0Image.DpiY, c0Image.Format, c0Image.Palette);
+            WriteableBitmap bmp = new(c0Image.PixelWidth, c0Image.PixelHeight, c0Image.DpiX, c0Image.DpiY, c0Image.Format, c0Image.Palette);
 
             int bytesPerPixel = c0Image.Format.BitsPerPixel / 8;
             int stride = c0Image.PixelWidth * bytesPerPixel;

@@ -60,9 +60,6 @@ namespace Morpher {
         /// Morphs a pixel from source to dest based on this LinePair (creates holes, not good)
         /// </summary>
         /// <param name="sourcePos">The source position of the pixel</param>
-        /// <param name="a"></param>
-        /// <param name="b"></param>
-        /// <param name="p"></param>
         /// <returns>The source position</returns>
         public Vector2 ForwardMorph(Vector2 sourcePos) {
             Vector2 vPQ = new Vector2((float)l0.X1, (float)l0.Y1) - new Vector2((float)l0.X2, (float)l0.Y2);
@@ -83,9 +80,6 @@ namespace Morpher {
         /// Reverse morphs a pixel from dest to source, removing holes from the image in the process
         /// </summary>
         /// <param name="destPos">The destination position of the pixel</param>
-        /// <param name="a"></param>
-        /// <param name="b"></param>
-        /// <param name="p"></param>
         /// <returns>The source pixel and equivalent data for this line morph</returns>
         public MorphDataPackage ReverseMorph(Vector2 destPos) {
             Vector2 vPQ = new Vector2((float)l1.X2, (float)l1.Y2) - new Vector2((float)l1.X1, (float)l1.Y1);

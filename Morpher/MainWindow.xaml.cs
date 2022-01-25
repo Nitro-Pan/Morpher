@@ -67,7 +67,7 @@ namespace Morpher {
 
         private void MorphMI_Click(object sender, RoutedEventArgs e) {
             BitmapSource bmp = mc.Morph();
-            mc.LoadImage(bmp, canvasToLoadNextImage);
+            mc.LoadImage(bmp, 1);
         }
     }
 }
