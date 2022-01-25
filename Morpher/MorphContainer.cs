@@ -159,14 +159,14 @@ namespace Morpher {
             if (canvasIndex == 0) {
                 //c0Image = FitToCanvas(image, canvasIndex);
                 c0Image = image;
-                imageToAdd.Width = c0Image.Width;
-                imageToAdd.Height = c0Image.Height;
+                //imageToAdd.Width = c0.ActualWidth;
+                //imageToAdd.Height = c0.ActualHeight;
                 c0.Children.Add(imageToAdd);
             } else {
                 //c1Image = FitToCanvas(image, canvasIndex);
                 c1Image = image;
-                imageToAdd.Width = c1Image.Width;
-                imageToAdd.Height = c1Image.Height;
+                //imageToAdd.Width = c1.Width;
+                //imageToAdd.Height = c1.Height;
                 c1.Children.Add(imageToAdd);
             }
         }
@@ -184,7 +184,7 @@ namespace Morpher {
 
             for (int y = 0; y < c0Image.PixelHeight; y++) {
                 for (int x = 0; x < c0Image.PixelWidth; x++) {
-                    Vector2 sourcePixels = lines[0].ReverseMorph(new(x, y), 0, 0, 0);
+                    Vector2 sourcePixels = WeightedMorph(new(x, y), 8, 2, 0.4f);
                     int xPos = Math.Clamp((int)Math.Round(sourcePixels.X), 0, bmp.PixelWidth - 1);
                     int yPos = Math.Clamp((int)Math.Round(sourcePixels.Y), 0, bmp.PixelHeight - 1);
                     for (int i = 0; i < bytesPerPixel; i++) {
@@ -196,6 +196,23 @@ namespace Morpher {
             Int32Rect destRect = new(0, 0, bmp.PixelWidth, bmp.PixelHeight);
             bmp.WritePixels(destRect, morphedPixels, stride, 0);
             return bmp;
+        }
+
+        private Vector2 WeightedMorph(Vector2 destPos, float a, float b, float p) {
+            Vector2 totalDelta = Vector2.Zero;
+            float weightTotal = 0.0f;
+            for (int i = 0; i < lines.Count; i++) {
+                MorphDataPackage sourceData = lines[i].ReverseMorph(destPos);
+                Vector2 delta = sourceData.xPrime - destPos; //might be other way around, verify
+                Line sourceLine = lines[i].l0;
+                float distanceToLine = sourceData.d;
+                float sourceLineVector = VectorMath.DistanceVector(new((float)sourceLine.X1, (float)sourceLine.Y1), new((float)sourceLine.X2, (float)sourceLine.Y2));
+                float weight = (float) Math.Pow(Math.Abs(Math.Pow(sourceLineVector, p) / a + distanceToLine), b);
+                weightTotal += weight;
+                totalDelta += weight * delta;
+            }
+            totalDelta /= weightTotal;
+            return destPos - totalDelta;
         }
 
         //incorrect, fix image to canvwidth*canvheight

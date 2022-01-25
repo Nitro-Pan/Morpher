@@ -8,6 +8,18 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 
 namespace Morpher {
+    struct MorphDataPackage {
+        public Vector2 xPrime;
+        public float d;
+        public float fl;
+
+        public MorphDataPackage(Vector2 xPrime, float d, float fl) {
+            this.xPrime = xPrime;
+            this.d = d;
+            this.fl = fl;
+        }
+    }
+
     class LinePair {
         public Line l0 { get; private set; }
         public Line l1 { get; private set; }
@@ -51,8 +63,8 @@ namespace Morpher {
         /// <param name="a"></param>
         /// <param name="b"></param>
         /// <param name="p"></param>
-        /// <returns></returns>
-        public Vector2 ForwardMorph(Vector2 sourcePos, float a, float b, float p) {
+        /// <returns>The source position</returns>
+        public Vector2 ForwardMorph(Vector2 sourcePos) {
             Vector2 vPQ = new Vector2((float)l0.X1, (float)l0.Y1) - new Vector2((float)l0.X2, (float)l0.Y2);
             Vector2 vPX = new Vector2((float)l0.X1, (float)l0.Y1) - sourcePos;
             Vector2 vnPQ = VectorMath.Normal(vPQ);
@@ -74,8 +86,8 @@ namespace Morpher {
         /// <param name="a"></param>
         /// <param name="b"></param>
         /// <param name="p"></param>
-        /// <returns></returns>
-        public Vector2 ReverseMorph(Vector2 destPos, float a, float b, float p) {
+        /// <returns>The source pixel and equivalent data for this line morph</returns>
+        public MorphDataPackage ReverseMorph(Vector2 destPos) {
             Vector2 vPQ = new Vector2((float)l1.X2, (float)l1.Y2) - new Vector2((float)l1.X1, (float)l1.Y1);
             Vector2 vPX = destPos - new Vector2((float)l1.X1, (float)l1.Y1);
             Vector2 vnPQ = VectorMath.Normal(vPQ);
@@ -87,7 +99,7 @@ namespace Morpher {
 
             Vector2 xPrime = new Vector2((float)l0.X1, (float)l0.Y1) + fl * vPQPrime + d * (VectorMath.Normal(vPQPrime) / VectorMath.Normal(vPQPrime).Length());
 
-            return xPrime;
+            return new(xPrime, d, fl);
         }
     }
 }
