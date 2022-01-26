@@ -5,13 +5,10 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Morpher"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="MainWindow" Height="535" Width="1000">
     <StackPanel>
         <Menu DockPanel.Dock="Top">
-            <MenuItem Header="File">
-                <MenuItem Header="_Open" Name="OpenMI" Click="OpenMI_Click">
-                    
-                </MenuItem>
+            <MenuItem Header="File" IsEnabled="False">
             </MenuItem>
             <MenuItem Header="Edit">
                 <MenuItem Header="_Morph" Name="MorphMI" Click="MorphMI_Click">
@@ -19,14 +16,16 @@
                 </MenuItem>
             </MenuItem>
         </Menu>
-        <Grid Height="415">
+        <Grid Height="500" Width ="1000">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition/>
                 <ColumnDefinition/>
             </Grid.ColumnDefinitions>
             <Canvas Name="LeftCanvas" MouseDown="Canvas_MouseDown" MouseMove="Canvas_MouseMove" MouseUp="Canvas_MouseUp" Background="DarkKhaki" Grid.Column="0">
+                <Button Name="ImageButton1" PreviewMouseDown="OpenImage_Click" Height="52" Width="138" Canvas.Left="181" Canvas.Top="224">Open Image</Button>
             </Canvas>
             <Canvas Name="RightCanvas" MouseDown="Canvas_MouseDown" MouseMove="Canvas_MouseMove" MouseUp="Canvas_MouseUp" Background="Coral" Grid.Column="1">
+                <Button Name="ImageButton2"  PreviewMouseDown="OpenImage_Click" Height="52" Width="138" Canvas.Left="181" Canvas.Top="224">Open Image</Button>
             </Canvas>
         </Grid>
     </StackPanel>

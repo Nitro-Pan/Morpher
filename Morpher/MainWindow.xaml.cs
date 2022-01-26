@@ -25,6 +25,9 @@ namespace Morpher {
         private MorphContainer mc;
         private int canvasToLoadNextImage = 0;
 
+        private const string LEFT_BUTTON_NAME = "ImageButton1";
+        private const string RIGHT_BUTTON_NAME = "ImageButton2";
+
         public MainWindow() {
             InitializeComponent();
             mc = new MorphContainer(LeftCanvas, RightCanvas);
@@ -66,8 +69,30 @@ namespace Morpher {
         }
 
         private void MorphMI_Click(object sender, RoutedEventArgs e) {
-            BitmapSource bmp = mc.Morph();
+            BitmapSource bmp = mc.InitiateMorph();
             mc.LoadImage(bmp, 1);
+        }
+
+        private void OpenImage_Click(object sender, MouseButtonEventArgs e) {
+
+            if (!(sender is Button b)) {
+                return;
+            }
+
+            int canvasIndex;
+
+            canvasIndex = b.Name == LEFT_BUTTON_NAME ? 0 : 1;
+
+            OpenFileDialog openFile = new();
+
+            openFile.Filter = "png files (*.png)|*.png|jpg files (*.jpg)|*.jpg";
+            openFile.InitialDirectory = /*Directory.GetCurrentDirectory();*/"c:\\";
+            if (openFile.ShowDialog() ?? false) {
+                b.IsEnabled = false;
+                b.Opacity = 0;
+                BitmapImage image = new(new(openFile.FileName));
+                mc.LoadImage(image, canvasIndex);
+            }
         }
     }
 }

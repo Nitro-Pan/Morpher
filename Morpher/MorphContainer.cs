@@ -156,45 +156,45 @@ namespace Morpher {
             }
 
             Image imageToAdd = new();
-            imageToAdd.Source = image;
+            imageToAdd.Source = FitToCanvas(image, canvasIndex);
 
             if (canvasIndex == 0) {
                 c0.Children.Remove(c0ImageVisual);
-                c0Image = image;
+                c0Image = FitToCanvas(image, canvasIndex);
                 c0ImageVisual = imageToAdd;
-                //imageToAdd.Width = c0.ActualWidth;
-                //imageToAdd.Height = c0.ActualHeight;
                 c0.Children.Insert(0, imageToAdd);
             } else {
-                //c1Image = FitToCanvas(image, canvasIndex);
                 c1.Children.Remove(c1ImageVisual);
-                c1Image = image;
+                c1Image = FitToCanvas(image, canvasIndex);
                 c1ImageVisual = imageToAdd;
-                //imageToAdd.Width = c1.Width;
-                //imageToAdd.Height = c1.Height;
                 c1.Children.Insert(0, imageToAdd);
             }
         }
 
-        //hardcoded c0Image, probably don't do that for actual morphing okay
-        public BitmapSource Morph() {
-            WriteableBitmap bmp = new(c0Image.PixelWidth, c0Image.PixelHeight, c0Image.DpiX, c0Image.DpiY, c0Image.Format, c0Image.Palette);
+        public BitmapSource InitiateMorph() {
+            return Morph(c0Image);
+        }
 
-            int bytesPerPixel = c0Image.Format.BitsPerPixel / 8;
-            int stride = c0Image.PixelWidth * bytesPerPixel;
-            int totalPixels = c0Image.PixelWidth * stride;
+        public BitmapSource Morph(BitmapSource src) {
+            WriteableBitmap bmp = new(src.PixelWidth, src.PixelHeight, src.DpiX, src.DpiY, src.Format, src.Palette);
+
+            List<Line> transitionLines = CreateMorphLines(3);
+
+            int bytesPerPixel = (src.Format.BitsPerPixel + 7) / 8;
+            int stride = src.PixelWidth * bytesPerPixel;
+            int totalPixels = src.PixelHeight * stride;
 
             byte[] pixels = new byte[totalPixels];
             byte[] morphedPixels = new byte[totalPixels];
             c0Image.CopyPixels(pixels, stride, 0);
 
-            for (int y = 0; y < c0Image.PixelHeight; y++) {
-                for (int x = 0; x < c0Image.PixelWidth; x++) {
-                    Vector2 sourcePixels = WeightedMorph(new(x, y), 8, 2, 0.4f);
+            for (int y = 0; y < src.PixelHeight; y++) {
+                for (int x = 0; x < src.PixelWidth; x++) {
+                    Vector2 sourcePixels = WeightedMorph(new(x, y), 0.1f, 2, 0);
                     int xPos = Math.Clamp((int)Math.Round(sourcePixels.X), 0, bmp.PixelWidth - 1);
                     int yPos = Math.Clamp((int)Math.Round(sourcePixels.Y), 0, bmp.PixelHeight - 1);
                     for (int i = 0; i < bytesPerPixel; i++) {
-                        morphedPixels[(y * c0Image.PixelWidth + x) * bytesPerPixel + i] = pixels[(yPos * c0Image.PixelWidth + xPos) * bytesPerPixel + i];
+                        morphedPixels[(y * src.PixelWidth + x) * bytesPerPixel + i] = pixels[(yPos * src.PixelWidth + xPos) * bytesPerPixel + i];
                     }
                 }
             }
@@ -204,6 +204,31 @@ namespace Morpher {
             return bmp;
         }
 
+        private List<Line> CreateMorphLines(int nFrames) {
+            List<Line> morphLines = new();
+
+            foreach (LinePair lp in lines) {
+                for (int i = 0; i < nFrames; i++) {
+                    Vector2 a = new((float)lp[0].X1, (float)lp[0].Y1);
+                    Vector2 b = new((float)lp[0].X2, (float)lp[0].Y2);
+                    Vector2 aPrime = new((float)lp[1].X1, (float)lp[1].Y1);
+                    Vector2 bPrime = new((float)lp[1].X2, (float)lp[1].Y2);
+                    Vector2 tweenA = Vector2.Lerp(a, aPrime, (i + 1) / ((float)nFrames + 2));
+                    Vector2 tweenB = Vector2.Lerp(b, bPrime, (i + 1) / ((float)nFrames + 2));
+                    Line tweenedLine = new() {
+                        X1 = tweenA.X,
+                        Y1 = tweenA.Y,
+                        X2 = tweenB.X,
+                        Y2 = tweenB.Y,
+                        StrokeThickness = lp[0].StrokeThickness,
+                        Stroke = lp[0].Stroke,
+                    };
+                    morphLines.Add(tweenedLine);
+                }
+            }
+            return morphLines;
+        }
+
         private Vector2 WeightedMorph(Vector2 destPos, float a, float b, float p) {
             Vector2 totalDelta = Vector2.Zero;
             float weightTotal = 0.0f;
@@ -211,7 +236,7 @@ namespace Morpher {
                 MorphDataPackage sourceData = lines[i].ReverseMorph(destPos);
                 Vector2 delta = sourceData.xPrime - destPos; //might be other way around, verify
                 Line sourceLine = lines[i].l0;
-                float distanceToLine = sourceData.d;
+                float distanceToLine = ActualDistance(sourceLine, sourceData);
                 float sourceLineVector = VectorMath.DistanceVector(new((float)sourceLine.X1, (float)sourceLine.Y1), new((float)sourceLine.X2, (float)sourceLine.Y2));
                 float weight = (float) Math.Pow(Math.Abs(Math.Pow(sourceLineVector, p) / a + distanceToLine), b);
                 weightTotal += weight;
@@ -221,7 +246,17 @@ namespace Morpher {
             return destPos - totalDelta;
         }
 
-        //incorrect, fix image to canvwidth*canvheight
+        private float ActualDistance(Line line, MorphDataPackage data) {
+            if (data.fl > 1) {
+                return VectorMath.DistanceVector(new((float)line.X2, (float)line.Y2), data.xPrime);
+            }
+            else if (data.fl < 0) {
+                return VectorMath.DistanceVector(new((float)line.X1, (float)line.Y1), data.xPrime);
+            }
+
+            return data.d;
+        }
+
         private BitmapSource FitToCanvas(BitmapSource bitmapSource, int canvasIndex) {
             if (canvasIndex != 0 && canvasIndex != 1) {
                 throw new IndexOutOfRangeException("Canvas index must be either 1 or 0.");

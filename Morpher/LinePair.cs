@@ -56,6 +56,11 @@ namespace Morpher {
             };
         }
 
+        public LinePair(Line l0, Line l1) {
+            this.l0 = l0;
+            this.l1 = l1;
+        }
+
         /// <summary>
         /// Morphs a pixel from source to dest based on this LinePair (creates holes, not good)
         /// </summary>
@@ -71,7 +76,7 @@ namespace Morpher {
 
             Vector2 vPQPrime = new Vector2((float)l1.X1, (float)l1.Y1) - new Vector2((float)l1.X2, (float)l1.Y2);
 
-            Vector2 xPrime = new Vector2((float)l1.X1, (float)l1.Y1) + fl * vPQPrime + d * (vnPQ / vnPQ.Length());
+            Vector2 xPrime = new Vector2((float)l1.X1, (float)l1.Y1) + fl * vPQPrime + d * (VectorMath.Normal(vPQPrime) / VectorMath.Normal(vPQPrime).Length());
 
             return xPrime;
         }
