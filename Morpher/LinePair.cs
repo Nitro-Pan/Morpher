@@ -44,7 +44,7 @@ namespace Morpher {
                 Y1 = y1,
                 Y2 = y2,
                 StrokeThickness = 2,
-                Stroke = Brushes.Black
+                Stroke = Brushes.Green
             };
             l1 = new Line {
                 X1 = x1,
@@ -52,13 +52,19 @@ namespace Morpher {
                 Y1 = y1,
                 Y2 = y2,
                 StrokeThickness = 2,
-                Stroke = Brushes.Black
+                Stroke = Brushes.Green
             };
         }
 
         public LinePair(Line l0, Line l1) {
             this.l0 = l0;
             this.l1 = l1;
+        }
+
+        public void Reverse() {
+            Line l = l1;
+            l1 = l0;
+            l0 = l;
         }
 
         /// <summary>
@@ -87,16 +93,20 @@ namespace Morpher {
         /// <param name="destPos">The destination position of the pixel</param>
         /// <returns>The source pixel and equivalent data for this line morph</returns>
         public MorphDataPackage ReverseMorph(Vector2 destPos) {
-            Vector2 vPQ = new Vector2((float)l1.X2, (float)l1.Y2) - new Vector2((float)l1.X1, (float)l1.Y1);
-            Vector2 vPX = destPos - new Vector2((float)l1.X1, (float)l1.Y1);
+            Vector2 P = new((float)l1.X1, (float)l1.Y1);
+            Vector2 Q = new((float)l1.X2, (float)l1.Y2);
+            Vector2 PP = new((float)l0.X1, (float)l0.Y1);
+            Vector2 QQ = new((float)l0.X2, (float)l0.Y2);
+            Vector2 vPQ = Q - P;
+            Vector2 vPX = destPos - P;
             Vector2 vnPQ = VectorMath.Normal(vPQ);
 
             float d = VectorMath.DistanceProject(vPX, vnPQ);
             float fl = VectorMath.DistanceProject(vPX, vPQ) / vPQ.Length();
 
-            Vector2 vPQPrime = new Vector2((float)l0.X2, (float)l0.Y2) - new Vector2((float)l0.X1, (float)l0.Y1);
+            Vector2 vPPQQ = QQ - PP;
 
-            Vector2 xPrime = new Vector2((float)l0.X1, (float)l0.Y1) + fl * vPQPrime + d * (VectorMath.Normal(vPQPrime) / VectorMath.Normal(vPQPrime).Length());
+            Vector2 xPrime = PP + fl * vPPQQ + d * (VectorMath.Normal(vPPQQ) / VectorMath.Normal(vPPQQ).Length());
 
             return new(xPrime, d, fl);
         }

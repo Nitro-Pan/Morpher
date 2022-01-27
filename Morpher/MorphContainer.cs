@@ -1,4 +1,6 @@
-﻿using System;
+﻿#define DEBUG
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -44,6 +46,11 @@ namespace Morpher {
             POINT,
             LINE,
             NONE
+        }
+
+        public enum morphDirection { 
+            LEFT_TO_RIGHT,
+            RIGHT_TO_LEFT
         }
 
         public MorphContainer(Canvas c0, Canvas c1) {
@@ -171,14 +178,63 @@ namespace Morpher {
             }
         }
 
-        public BitmapSource InitiateMorph() {
-            return Morph(c0Image);
+        public List<BitmapSource> InitiateMorph() {
+            return Morph(c0Image, morphDirection.LEFT_TO_RIGHT, 5);
         }
 
-        public BitmapSource Morph(BitmapSource src) {
-            WriteableBitmap bmp = new(src.PixelWidth, src.PixelHeight, src.DpiX, src.DpiY, src.Format, src.Palette);
+        public List<BitmapSource> Morph(BitmapSource src, morphDirection dir, int nFrames) {
+            List<List<LinePair>> transitionLines;
 
-            List<Line> transitionLines = CreateMorphLines(3);
+            if (dir == morphDirection.RIGHT_TO_LEFT) {
+                List<LinePair> reversedLines = new();
+                foreach (LinePair lp in lines) {
+                    reversedLines.Add(new LinePair(lp.l1, lp.l0));
+                }
+                transitionLines = CreateTweenLines(nFrames, reversedLines);
+            } else {
+                transitionLines = CreateTweenLines(nFrames, lines);
+            }
+
+            List<BitmapSource> morphedBitmaps = new();
+
+            for (int i = 0; i < transitionLines.Count; i++) {
+                morphedBitmaps.Add(createFrame(src, transitionLines[i]));
+#if DEBUG
+                Trace.WriteLine($"Created frame {i + 1}/{transitionLines.Count}");
+#endif
+            }
+
+            return morphedBitmaps;
+        }
+
+        private List<List<LinePair>> CreateTweenLines(int nFrames, List<LinePair> linePairs) {
+            List<List<LinePair>> morphLines = new();
+            for (int i = 0; i < nFrames; i++) {
+                List<LinePair> tweenLines = new();
+                foreach (LinePair lp in linePairs) {
+                    Vector2 a = new((float)lp[0].X1, (float)lp[0].Y1);
+                    Vector2 b = new((float)lp[0].X2, (float)lp[0].Y2);
+                    Vector2 aPrime = new((float)lp[1].X1, (float)lp[1].Y1);
+                    Vector2 bPrime = new((float)lp[1].X2, (float)lp[1].Y2);
+                    Vector2 tweenA = Vector2.Lerp(a, aPrime, (i) / ((float)nFrames));
+                    Vector2 tweenB = Vector2.Lerp(b, bPrime, (i) / ((float)nFrames));
+                    Line tweenedLine = new() {
+                        X1 = tweenA.X,
+                        Y1 = tweenA.Y,
+                        X2 = tweenB.X,
+                        Y2 = tweenB.Y,
+                        StrokeThickness = lp[0].StrokeThickness,
+                        Stroke = lp[0].Stroke,
+                    };
+                    tweenLines.Add(new(lp[0], tweenedLine));
+                }
+                morphLines.Add(tweenLines);
+            }
+            return morphLines;
+        }
+
+        private BitmapSource createFrame(BitmapSource src, List<LinePair> morphLines) {
+            WriteableBitmap bmp = new(src.PixelWidth, src.PixelHeight, src.DpiX, src.DpiY, src.Format, src.Palette);
 
             int bytesPerPixel = (src.Format.BitsPerPixel + 7) / 8;
             int stride = src.PixelWidth * bytesPerPixel;
@@ -186,11 +242,11 @@ namespace Morpher {
 
             byte[] pixels = new byte[totalPixels];
             byte[] morphedPixels = new byte[totalPixels];
-            c0Image.CopyPixels(pixels, stride, 0);
+            src.CopyPixels(pixels, stride, 0);
 
             for (int y = 0; y < src.PixelHeight; y++) {
                 for (int x = 0; x < src.PixelWidth; x++) {
-                    Vector2 sourcePixels = WeightedMorph(new(x, y), 0.1f, 2, 0);
+                    Vector2 sourcePixels = WeightedMorph(new(x, y), morphLines, 0.01f, 2, 0);
                     int xPos = Math.Clamp((int)Math.Round(sourcePixels.X), 0, bmp.PixelWidth - 1);
                     int yPos = Math.Clamp((int)Math.Round(sourcePixels.Y), 0, bmp.PixelHeight - 1);
                     for (int i = 0; i < bytesPerPixel; i++) {
@@ -204,41 +260,16 @@ namespace Morpher {
             return bmp;
         }
 
-        private List<Line> CreateMorphLines(int nFrames) {
-            List<Line> morphLines = new();
-
-            foreach (LinePair lp in lines) {
-                for (int i = 0; i < nFrames; i++) {
-                    Vector2 a = new((float)lp[0].X1, (float)lp[0].Y1);
-                    Vector2 b = new((float)lp[0].X2, (float)lp[0].Y2);
-                    Vector2 aPrime = new((float)lp[1].X1, (float)lp[1].Y1);
-                    Vector2 bPrime = new((float)lp[1].X2, (float)lp[1].Y2);
-                    Vector2 tweenA = Vector2.Lerp(a, aPrime, (i + 1) / ((float)nFrames + 2));
-                    Vector2 tweenB = Vector2.Lerp(b, bPrime, (i + 1) / ((float)nFrames + 2));
-                    Line tweenedLine = new() {
-                        X1 = tweenA.X,
-                        Y1 = tweenA.Y,
-                        X2 = tweenB.X,
-                        Y2 = tweenB.Y,
-                        StrokeThickness = lp[0].StrokeThickness,
-                        Stroke = lp[0].Stroke,
-                    };
-                    morphLines.Add(tweenedLine);
-                }
-            }
-            return morphLines;
-        }
-
-        private Vector2 WeightedMorph(Vector2 destPos, float a, float b, float p) {
+        private Vector2 WeightedMorph(Vector2 destPos, List<LinePair> morphLines, float a, float b, float p) {
             Vector2 totalDelta = Vector2.Zero;
             float weightTotal = 0.0f;
-            for (int i = 0; i < lines.Count; i++) {
-                MorphDataPackage sourceData = lines[i].ReverseMorph(destPos);
-                Vector2 delta = sourceData.xPrime - destPos; //might be other way around, verify
-                Line sourceLine = lines[i].l0;
-                float distanceToLine = ActualDistance(sourceLine, sourceData);
-                float sourceLineVector = VectorMath.DistanceVector(new((float)sourceLine.X1, (float)sourceLine.Y1), new((float)sourceLine.X2, (float)sourceLine.Y2));
-                float weight = (float) Math.Pow(Math.Abs(Math.Pow(sourceLineVector, p) / a + distanceToLine), b);
+            for (int i = 0; i < morphLines.Count; i++) {
+                MorphDataPackage sourceData = morphLines[i].ReverseMorph(destPos);
+                Vector2 delta = destPos - sourceData.xPrime; //might be other way around, verify
+                Line fromLine = morphLines[i][0];
+                float distanceToLine = ActualDistance(fromLine, sourceData);
+                float sourceLineVector = VectorMath.DistanceVector(new((float)fromLine.X1, (float)fromLine.Y1), new((float)fromLine.X2, (float)fromLine.Y2));
+                float weight = (float) Math.Pow(Math.Abs(Math.Pow(sourceLineVector, p) / (a + distanceToLine)), b);
                 weightTotal += weight;
                 totalDelta += weight * delta;
             }
@@ -248,13 +279,12 @@ namespace Morpher {
 
         private float ActualDistance(Line line, MorphDataPackage data) {
             if (data.fl > 1) {
-                return VectorMath.DistanceVector(new((float)line.X2, (float)line.Y2), data.xPrime);
-            }
-            else if (data.fl < 0) {
-                return VectorMath.DistanceVector(new((float)line.X1, (float)line.Y1), data.xPrime);
+                return Math.Abs(VectorMath.DistanceVector(new((float)line.X2, (float)line.Y2), data.xPrime));
+            } else if (data.fl < 0) {
+                return Math.Abs(VectorMath.DistanceVector(new((float)line.X1, (float)line.Y1), data.xPrime));
             }
 
-            return data.d;
+            return Math.Abs(data.d);
         }
 
         private BitmapSource FitToCanvas(BitmapSource bitmapSource, int canvasIndex) {
@@ -274,8 +304,8 @@ namespace Morpher {
         private void BlackOutUnselectedLines() {
             foreach (LinePair lp in lines) {
                 if (lp == selectedPair) continue;
-                lp.l0.Stroke = Brushes.Black;
-                lp.l1.Stroke = Brushes.Black;
+                lp.l0.Stroke = Brushes.Green;
+                lp.l1.Stroke = Brushes.Green;
             }
         }
 

@@ -56,7 +56,7 @@ namespace Morpher {
         }
 
         private void OpenMI_Click(object sender, RoutedEventArgs e) {
-            OpenFileDialog openFile = new OpenFileDialog();
+            OpenFileDialog openFile = new();
 
             openFile.Filter = "png files (*.png)|*.png|jpg files (*.jpg)|*.jpg";
             openFile.InitialDirectory = /*Directory.GetCurrentDirectory();*/"c:\\";
@@ -69,8 +69,8 @@ namespace Morpher {
         }
 
         private void MorphMI_Click(object sender, RoutedEventArgs e) {
-            BitmapSource bmp = mc.InitiateMorph();
-            mc.LoadImage(bmp, 1);
+            List<BitmapSource> bmp = mc.InitiateMorph();
+            mc.LoadImage(bmp[^1], 1);
         }
 
         private void OpenImage_Click(object sender, MouseButtonEventArgs e) {
