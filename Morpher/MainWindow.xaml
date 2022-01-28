@@ -14,6 +14,9 @@
                 <MenuItem Header="_Morph" Name="MorphMI" Click="MorphMI_Click">
 
                 </MenuItem>
+                <MenuItem Header="_Clear" Name="ClearMI" Click="ClearMI_Click">
+                    
+                </MenuItem>
             </MenuItem>
         </Menu>
         <Grid Height="500" Width ="1000">

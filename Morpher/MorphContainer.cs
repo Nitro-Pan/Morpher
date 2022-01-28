@@ -12,6 +12,7 @@ using System.Windows.Media.Imaging;
 using System.Diagnostics;
 using System.Numerics;
 using System.Windows;
+using System.Threading;
 
 namespace Morpher {
     class MorphContainer {
@@ -178,8 +179,18 @@ namespace Morpher {
             }
         }
 
+        public void Clear() {
+            c0.Children.Remove(c0ImageVisual);
+            c1.Children.Remove(c1ImageVisual);
+            foreach (LinePair lp in lines) {
+                c0.Children.Remove(lp.l0);
+                c1.Children.Remove(lp.l1);
+            }
+            lines = new List<LinePair>();
+        }
+
         public List<BitmapSource> InitiateMorph() {
-            return Morph(c0Image, morphDirection.LEFT_TO_RIGHT, 5);
+            return Morph(c0Image, morphDirection.LEFT_TO_RIGHT, 24);
         }
 
         public List<BitmapSource> Morph(BitmapSource src, morphDirection dir, int nFrames) {
@@ -195,13 +206,19 @@ namespace Morpher {
                 transitionLines = CreateTweenLines(nFrames, lines);
             }
 
-            List<BitmapSource> morphedBitmaps = new();
+            List<BitmapSource> morphedBitmaps = new(transitionLines.Count);
+
+            List<Thread> morphingThreads = new();
 
             for (int i = 0; i < transitionLines.Count; i++) {
-                morphedBitmaps.Add(createFrame(src, transitionLines[i]));
+                morphedBitmaps.Add(CreateFrame(src, transitionLines[i]));
 #if DEBUG
                 Trace.WriteLine($"Created frame {i + 1}/{transitionLines.Count}");
 #endif
+            }
+
+            foreach (Thread t in morphingThreads) {
+                t.Join();
             }
 
             return morphedBitmaps;
@@ -233,24 +250,23 @@ namespace Morpher {
             return morphLines;
         }
 
-        private BitmapSource createFrame(BitmapSource src, List<LinePair> morphLines) {
+        private BitmapSource CreateFrame(BitmapSource src, List<LinePair> morphLines) {
             WriteableBitmap bmp = new(src.PixelWidth, src.PixelHeight, src.DpiX, src.DpiY, src.Format, src.Palette);
-
-            int bytesPerPixel = (src.Format.BitsPerPixel + 7) / 8;
-            int stride = src.PixelWidth * bytesPerPixel;
-            int totalPixels = src.PixelHeight * stride;
+            int bytesPerPixel = (bmp.Format.BitsPerPixel + 7) / 8;
+            int stride = bmp.PixelWidth * bytesPerPixel;
+            int totalPixels = bmp.PixelHeight * stride;
 
             byte[] pixels = new byte[totalPixels];
             byte[] morphedPixels = new byte[totalPixels];
             src.CopyPixels(pixels, stride, 0);
 
-            for (int y = 0; y < src.PixelHeight; y++) {
-                for (int x = 0; x < src.PixelWidth; x++) {
+            for (int y = 0; y < bmp.PixelHeight; y++) {
+                for (int x = 0; x < bmp.PixelWidth; x++) {
                     Vector2 sourcePixels = WeightedMorph(new(x, y), morphLines, 0.01f, 2, 0);
                     int xPos = Math.Clamp((int)Math.Round(sourcePixels.X), 0, bmp.PixelWidth - 1);
                     int yPos = Math.Clamp((int)Math.Round(sourcePixels.Y), 0, bmp.PixelHeight - 1);
                     for (int i = 0; i < bytesPerPixel; i++) {
-                        morphedPixels[(y * src.PixelWidth + x) * bytesPerPixel + i] = pixels[(yPos * src.PixelWidth + xPos) * bytesPerPixel + i];
+                        morphedPixels[(y * bmp.PixelWidth + x) * bytesPerPixel + i] = pixels[(yPos * bmp.PixelWidth + xPos) * bytesPerPixel + i];
                     }
                 }
             }
@@ -265,7 +281,7 @@ namespace Morpher {
             float weightTotal = 0.0f;
             for (int i = 0; i < morphLines.Count; i++) {
                 MorphDataPackage sourceData = morphLines[i].ReverseMorph(destPos);
-                Vector2 delta = destPos - sourceData.xPrime; //might be other way around, verify
+                Vector2 delta = destPos - sourceData.xPrime;
                 Line fromLine = morphLines[i][0];
                 float distanceToLine = ActualDistance(fromLine, sourceData);
                 float sourceLineVector = VectorMath.DistanceVector(new((float)fromLine.X1, (float)fromLine.Y1), new((float)fromLine.X2, (float)fromLine.Y2));

@@ -70,7 +70,9 @@ namespace Morpher {
 
         private void MorphMI_Click(object sender, RoutedEventArgs e) {
             List<BitmapSource> bmp = mc.InitiateMorph();
-            mc.LoadImage(bmp[^1], 1);
+            MorphResult morphResult = new MorphResult();
+            morphResult.LoadImages(bmp);
+            morphResult.Show();
         }
 
         private void OpenImage_Click(object sender, MouseButtonEventArgs e) {
@@ -93,6 +95,14 @@ namespace Morpher {
                 BitmapImage image = new(new(openFile.FileName));
                 mc.LoadImage(image, canvasIndex);
             }
+        }
+
+        private void ClearMI_Click(object sender, RoutedEventArgs e) {
+            mc.Clear();
+            ImageButton1.IsEnabled = true;
+            ImageButton1.Opacity = 1;
+            ImageButton2.IsEnabled = true;
+            ImageButton2.Opacity = 1;
         }
     }
 }
