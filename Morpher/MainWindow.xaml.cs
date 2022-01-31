@@ -69,7 +69,7 @@ namespace Morpher {
         }
 
         private void MorphMI_Click(object sender, RoutedEventArgs e) {
-            List<BitmapSource> bmp = mc.InitiateMorph();
+            List<BitmapSource> bmp = mc.InitiateMorph(24);
             MorphResult morphResult = new MorphResult();
             morphResult.LoadImages(bmp);
             morphResult.Show();

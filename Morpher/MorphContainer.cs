@@ -17,8 +17,8 @@ using System.Threading;
 namespace Morpher {
     class MorphContainer {
         private List<LinePair> lines = new List<LinePair>();
-        private Canvas c0;
-        private Canvas c1;
+        private readonly Canvas c0;
+        private readonly Canvas c1;
         private BitmapSource c0Image;
         private Image c0ImageVisual;
         private BitmapSource c1Image;
@@ -62,9 +62,9 @@ namespace Morpher {
 
         public void DrawNewLine(double x, double y) {
             lines.Add(new LinePair(x, y, x, y));
-            c0.Children.Add(lines[lines.Count - 1].l0);
-            c1.Children.Add(lines[lines.Count - 1].l1);
-            selectedPair = lines[lines.Count - 1];
+            c0.Children.Add(lines[^1].l0);
+            c1.Children.Add(lines[^1].l1);
+            selectedPair = lines[^1];
             state = lineState.CREATING;
         }
 
@@ -189,8 +189,17 @@ namespace Morpher {
             lines = new List<LinePair>();
         }
 
-        public List<BitmapSource> InitiateMorph() {
-            return Morph(c0Image, morphDirection.LEFT_TO_RIGHT, 24);
+        public List<BitmapSource> InitiateMorph(int nFrames) {
+            List<BitmapSource> leftMorph = Morph(c0Image, morphDirection.LEFT_TO_RIGHT, nFrames);
+#if DEBUG
+            Trace.WriteLine("Left morph completed");
+#endif
+            List<BitmapSource> rightMorph = Morph(c1Image, morphDirection.RIGHT_TO_LEFT, nFrames);
+            rightMorph.Reverse();
+#if DEBUG
+            Trace.WriteLine("Right morph Completed");
+#endif
+            return CrossDissolve(leftMorph, rightMorph);
         }
 
         public List<BitmapSource> Morph(BitmapSource src, morphDirection dir, int nFrames) {
@@ -222,6 +231,37 @@ namespace Morpher {
             }
 
             return morphedBitmaps;
+        }
+
+        private List<BitmapSource> CrossDissolve(List<BitmapSource> left, List<BitmapSource> right) {
+            if (left.Count != right.Count) {
+                throw new ArgumentException($"left.Count must be equal to right.Count, currently left: {left.Count}, right: {right.Count}");
+            }
+
+            List<BitmapSource> result = new();
+            result.Add(left[0]);
+            for (int i = 1; i < left.Count - 1; i++) {
+                WriteableBitmap dissolved = new(left[i].PixelWidth, left[i].PixelHeight, left[i].DpiX, left[i].DpiY, left[i].Format, left[i].Palette);
+                int bytesPerPixel = (dissolved.Format.BitsPerPixel + 7) / 8;
+                int stride = dissolved.PixelWidth * bytesPerPixel;
+                int totalPixels = stride * dissolved.PixelHeight;
+
+                byte[] dest = new byte[totalPixels];
+                byte[] leftPixels = new byte[totalPixels];
+                byte[] rightPixels = new byte[totalPixels];
+
+                left[i].CopyPixels(leftPixels, stride, 0);
+                right[i].CopyPixels(rightPixels, stride, 0);
+
+                for (int j = 0; j < dest.Length; j++) {
+                    dest[j] = (byte) (leftPixels[j] * (1 - (i / (float)left.Count)) + rightPixels[j] * (i / (float)left.Count));
+                }
+                Int32Rect resultRect = new(0, 0, dissolved.PixelWidth, dissolved.PixelHeight);
+                dissolved.WritePixels(resultRect, dest, stride, 0);
+                result.Add(dissolved);
+            }
+            result.Add(right[^1]);
+            return result;
         }
 
         private List<List<LinePair>> CreateTweenLines(int nFrames, List<LinePair> linePairs) {
