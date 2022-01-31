@@ -5,12 +5,20 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Morpher"
         mc:Ignorable="d"
-        Title="MorphResult" Height="450" Width="800">
+        Title="MorphResult" Height="525" Width="800">
     <Grid>
-        <Canvas Name="Images">
-
-        </Canvas>
-        <Button Name="NextImage" Height="20" Margin="400,404,250,10" PreviewMouseDown="NextImage_MouseDown">&gt;</Button>
-        <Button Name="PlayStopButton" Height="20" Margin="245,404,405,10" PreviewMouseDown="PlayMorph_MouseDown">Play</Button>
+        <Canvas Name="Images"></Canvas>
+        <Grid Margin="0,445,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Slider Name="ImageSelectionSlider" Minimum="0" Maximum="24" Grid.Column="1" ValueChanged="ImageSelectionSlider_ValueChanged" Margin="0,15,0,0"></Slider>
+            <!--<Button Name="NextImage" Height="20" Width="100" PreviewMouseDown="NextImage_MouseDown" Grid.Column="2">&gt;</Button>
+            <Button Name="PrevImage" Height="20" Width="100" PreviewMouseDown="PrevImage_MouseDown" Grid.Column="1">&lt;</Button>-->
+            <Button Name="PlayStopButton" Height="20" Width="100" PreviewMouseDown="PlayMorph_MouseDown" Grid.Column="0">Play</Button>
+            <Button Name="SaveButton" Height="20" Width="100" PreviewMouseDown="SaveImage_MouseDown" Grid.Column="2">Save To GIF</Button>
+        </Grid>
     </Grid>
 </Window>
